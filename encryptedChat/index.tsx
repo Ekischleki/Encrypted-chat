@@ -74,22 +74,6 @@ async function decrypt(messageBytes: Uint8Array<ArrayBuffer>, password: Uint8Arr
     return new Uint8Array(decrypted);
 }
 
-function encodeMessage(encrypted: ArrayBuffer, iv: Uint8Array) {
-    console.log(new TextDecoder().decode(encrypted));
-    const encryptedArray = new Uint8Array(encrypted);
-    const ivArray = iv;
-    // these are both just turning the uint8array s into binary strings :)
-    let encEncoded = "";
-    let ivEncoded = "";
-    for (let i = 0; i < encryptedArray.length; i++) {
-        encEncoded += String.fromCharCode(encryptedArray[i]);
-    }
-    for (let i = 0; i < ivArray.length; i++) {
-        ivEncoded += String.fromCharCode(ivArray[i]);
-    }
-    return `START|${btoa(ivEncoded)} ${btoa(encEncoded)}|END`;
-}
-
 function concatArrayBuffers(...buffers: Uint8Array[]): Uint8Array {
     const totalLength = buffers.reduce((sum, buf) => sum + buf.byteLength, 0);
     const result = new Uint8Array(totalLength);
