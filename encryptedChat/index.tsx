@@ -12,7 +12,7 @@ const regexStartEnd = /(?<=\|START\|)(?=.* )(.*)(?=\|END\|)/;
 
 const IV_LEN = 16;
 const CHECKSUM_LEN = 8; // Ought to be enuf
-
+const AES_BLOCKSIZE = 128;
 const password = crypto.getRandomValues(new Uint8Array(32));
 let binary = "";
 password.forEach(element => binary += String.fromCharCode(element));
