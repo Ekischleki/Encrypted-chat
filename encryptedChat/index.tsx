@@ -9,7 +9,12 @@ import { updateMessage } from "@api/MessageUpdater";
 import { Logger } from "@utils/Logger";
 import definePlugin from "@utils/types";
 import { Message } from "@vencord/discord-types";
+
+import { encryptChatBarIcon, EncryptIcon } from "./encryptIcon";
+import { settings } from "./settings";
+
 const regexStartEnd = /START\|([a-zA-Z0-9+/]*?={0,3})\|END/;
+const regexPing = /<(@[0-9].{17})>/;
 
 const IV_LEN = 16;
 const CHECKSUM_LEN = 8; // Ought to be enuf
@@ -201,6 +206,12 @@ export default definePlugin({
     name: "EncryptedChat",
     description: "A plugin to let you communicate with symmetric encryption in servers (TODO: asymmetric for DMS)",
     authors: [{ name: "Leah", id: 429195069015195650n }, { name: "Fern", id: 972889822857420810n }],
+    settings,
+
+    chatBarButton: {
+        icon: EncryptIcon,
+        render: encryptChatBarIcon
+    },
 
     handleIncomingMessage,
 
@@ -216,11 +227,13 @@ export default definePlugin({
 
     start() {
         this.onSent = addMessagePreSendListener(async (channelId, messageObj, extra) => {
+            if (!settings.store.enableEncryption) return;
             messageObj.content = await messageEncrypt(messageObj.content, channelId);
             return { cancel: false };
         });
 
         this.onEdit = addMessagePreEditListener(async (channelId, messageId, messageObj) => {
+            if (!settings.store.enableEncryption) return;
             messageObj.content = await messageEncrypt(messageObj.content, channelId);
             return { cancel: false };
         });
