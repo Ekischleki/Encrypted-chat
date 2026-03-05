@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import "./styles.css";
+
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { updateMessage } from "@api/MessageUpdater";
 import { Logger } from "@utils/Logger";
@@ -106,8 +108,8 @@ async function createChecksum(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Arra
 async function messageEncrypt(inText: string, channel_id: string): Promise<string> {
     const textBytes = new TextEncoder().encode(inText);
     const checksum = await createChecksum(textBytes);
-    LOGGER.log(`Plain bytes: ${textBytes}`);
-    LOGGER.log(`Encrypt checksum: ${checksum}`);
+    // LOGGER.log(`Plain bytes: ${textBytes}`);
+    // LOGGER.log(`Encrypt checksum: ${checksum}`);
     const { encrypted, iv } = await encrypt(inText, await getStandardKey(channel_id));
     const messageBytes = concatArrayBuffers(iv, checksum, new Uint8Array(encrypted));
     return `START|${toBase64(messageBytes)}|END`;
@@ -131,15 +133,15 @@ async function tryMessageDecrypt(bytes: Uint8Array<ArrayBuffer>, channel_id: str
         // return;
     }
     const iv = bytes.slice(0, IV_LEN);
-    LOGGER.log("Decrypt IVS: ", iv);
+    // LOGGER.log("Decrypt IVS: ", iv);
     const messageChecksum = bytes.slice(IV_LEN, IV_LEN + CHECKSUM_LEN);
-    LOGGER.log("Decrypt checksum: ", messageChecksum);
+    // LOGGER.log("Decrypt checksum: ", messageChecksum);
 
     const encrypted = bytes.slice(IV_LEN + CHECKSUM_LEN, bytes.byteLength);
-    LOGGER.log("Encrypted Bytes: ", encrypted);
+    // LOGGER.log("Encrypted Bytes: ", encrypted);
 
     const decrypted = await decrypt(encrypted, await getStandardKey(channel_id), iv);
-    LOGGER.log("Decrypted ", decrypted);
+    // LOGGER.log("Decrypted ", decrypted);
 
     const checksum = await createChecksum(decrypted);
 
@@ -175,17 +177,17 @@ function toBase64(bytes: Uint8Array) {
 function handleIncomingMessage(message: Message) {
     const matches = regexStartEnd.exec(message.content);
     if (!matches) {
-        LOGGER.info(`Incoming message (${message.content}) didn't match with the regex`);
+        // LOGGER.info(`Incoming message (${message.content}) didn't match with the regex`);
         return;
     }
     const base64 = matches[1];
-    LOGGER.info(`Extracted base64 part: '${base64}'`);
+    // LOGGER.info(`Extracted base64 part: '${base64}'`);
     let bytes;
     try {
         const binaryString = atob(base64);
         bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
     } catch {
-        LOGGER.error("Extracted part wasn't valid base 64 (which should be impossible)");
+        // LOGGER.error("Extracted part wasn't valid base 64 (which should be impossible)");
         return;
     }
 

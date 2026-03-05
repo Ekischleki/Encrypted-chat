@@ -13,7 +13,6 @@ import { settings } from "./settings";
 
 const cl = classNameFactory("enc-");
 
-
 export const EncryptIcon: IconComponent = ({ height = 30, width = 20, className }) => {
     return (
         <svg
@@ -27,7 +26,7 @@ export const EncryptIcon: IconComponent = ({ height = 30, width = 20, className 
     );
 };
 
-export const encryptChatBarIcon: ChatBarButtonFactory = ({ isMainChat }) => {
+export const encryptChatBarIcon: ChatBarButtonFactory = () => {
     const { enableEncryption } = settings.use(["enableEncryption"]);
 
     const toggle = () => {
@@ -64,7 +63,7 @@ export const encryptChatBarIcon: ChatBarButtonFactory = ({ isMainChat }) => {
                 return toggle();
             }}
         >
-            <EncryptIcon/>
+            <EncryptIcon className={cl({ "activated": enableEncryption })} />
         </ChatBarButton>
     );
 
