@@ -19,12 +19,20 @@ const regexStartEnd = /START\|([a-zA-Z0-9+/]*?={0,3})\|END/;
 const regexPing = /<(@[0-9].{17})>/;
 
 const IV_LEN = 16;
+const TYPE_LEN = 1;
 const CHECKSUM_LEN = 8; // Ought to be enuf
+const HEAD_LEN = IV_LEN + CHECKSUM_LEN;
 const AES_BLOCKSIZE = 16;
 const password = crypto.getRandomValues(new Uint8Array(32));
 let binary = "";
 password.forEach(element => binary += String.fromCharCode(element));
 console.log("Your password is: " + btoa(binary));
+
+enum MessageType {
+    Encrypted = 1,
+    PubKeyShare = 2,
+    PasswordVerify = 3,
+}
 
 /*
  * |=============================================================================================|
@@ -127,9 +135,10 @@ function uint8ArraysEqual(a, b) {
 }
 
 async function tryMessageDecrypt(bytes: Uint8Array<ArrayBuffer>, channel_id: string): Promise<undefined | string> {
-    if ((bytes.byteLength - IV_LEN - CHECKSUM_LEN) % AES_BLOCKSIZE !== 0) {
+    const payloadLen = bytes.byteLength - HEAD_LEN;
+    if (payloadLen << 0 || payloadLen % AES_BLOCKSIZE !== 0) {
         // This can't be a valid payload since the sizes are wrong
-        LOGGER.warn(`Message has valid Start End encoding, yet payload size (${bytes.byteLength - IV_LEN - CHECKSUM_LEN}) is wrong (Should be a multiple of ${AES_BLOCKSIZE}).`);
+        LOGGER.warn(`Message has valid Start End encoding, yet payload len (${payloadLen}) is wrong (Should be a multiple of ${AES_BLOCKSIZE} and bigger than 0).`);
         // return;
     }
     const iv = bytes.slice(0, IV_LEN);
@@ -180,6 +189,7 @@ function handleIncomingMessage(message: Message) {
         // LOGGER.info(`Incoming message (${message.content}) didn't match with the regex`);
         return;
     }
+    LOGGER.info(`Matches: '${matches}'`);
     const base64 = matches[1];
     // LOGGER.info(`Extracted base64 part: '${base64}'`);
     let bytes;
