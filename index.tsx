@@ -136,7 +136,7 @@ function uint8ArraysEqual(a, b) {
 
 async function tryMessageDecrypt(bytes: Uint8Array<ArrayBuffer>, channel_id: string): Promise<undefined | string> {
     const payloadLen = bytes.byteLength - HEAD_LEN;
-    if (payloadLen << 0 || payloadLen % AES_BLOCKSIZE !== 0) {
+    if (payloadLen < 0) {
         // This can't be a valid payload since the sizes are wrong
         LOGGER.warn(`Message has valid Start End encoding, yet payload len (${payloadLen}) is wrong (Should be a multiple of ${AES_BLOCKSIZE} and bigger than 0).`);
         // return;
