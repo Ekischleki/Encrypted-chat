@@ -34,7 +34,7 @@ export const encryptChatBarIcon: ChatBarButtonFactory = ({ isMainChat }) => {
     const toggle = () => {
         const newState = !enableEncryption;
         settings.store.enableEncryption = newState;
-        if (newState !== false) {
+        if (newState) {
             Alerts.show({
                 title: "Message Encryption enabled! Click again to disable.",
                 body: <>
