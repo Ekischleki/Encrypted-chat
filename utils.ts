@@ -109,6 +109,18 @@ export async function decrypt(messageBytes: Uint8Array<ArrayBuffer>, password: U
     return new Uint8Array(decrypted);
 }
 
+export async function decrypt_key(messageBytes: Uint8Array<ArrayBuffer>, key: CryptoKey, iv: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
+    const decrypted = await crypto.subtle.decrypt(
+        {
+            name: "AES-GCM",
+            iv: iv,
+        },
+        key,
+        messageBytes
+    );
+    return new Uint8Array(decrypted);
+}
+
 export async function encrypt(text: string, password: Uint8Array<ArrayBuffer>) {
     const messageBytes = new TextEncoder().encode(text);
     const key = await crypto.subtle.importKey(
@@ -127,6 +139,21 @@ export async function encrypt(text: string, password: Uint8Array<ArrayBuffer>) {
         },
         key,
         messageBytes
+    );
+
+    return { encrypted: encrypted, iv: iv };
+}
+
+export async function encrypt_key(bytes: Uint8Array<ArrayBuffer>, key: CryptoKey) {
+    const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
+
+    const encrypted = await crypto.subtle.encrypt(
+        {
+            name: "AES-GCM",
+            iv: iv,
+        },
+        key,
+        bytes
     );
 
     return { encrypted: encrypted, iv: iv };
