@@ -10,12 +10,17 @@ import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreE
 import { updateMessage } from "@api/MessageUpdater";
 import { Logger } from "@utils/Logger";
 import definePlugin from "@utils/types";
-import { Message } from "@vencord/discord-types";
+import { Channel, Message } from "@vencord/discord-types";
 
-import { CHECKSUM_LEN, createChecksum, decrypt, encrypt, getChannelKey } from "./cryptoFunctions";
+import { CHECKSUM_LEN, createChecksum, decrypt, encrypt, getChannelKey, getPrivateEcdhChannelKey } from "./cryptoFunctions";
 import { EncryptChatBarIcon, EncryptIcon } from "./encryptIcon";
 import { settings } from "./settings";
 import { base64ToUint8, concatArrayBuffers, IV_LEN, stringToUint8, uint8ArraysEqual, uint8ToBase64, uint8ToString } from "./utils";
+import { getCurrentChannel, sendMessage } from "@utils/discord";
+import { PublicKey } from "./ecc";
+import { openModal } from "@utils/modal";
+import { Alerts, UserStore } from "@webpack/common";
+import { Paragraph } from "@components/Paragraph";
 
 const regexStartEnd = /START\|([a-zA-Z0-9+/]*?={0,3})\|END/g; // this is the regex that detects an encrypted message
 
@@ -38,7 +43,7 @@ enum MessageType {
 */
 
 
-const LOGGER = new Logger("EncryptedChat", "#ff9900");
+export const LOGGER = new Logger("EncryptedChat", "#ff9900");
 
 async function messageEncrypt(inText: string, channel_id: string): Promise<string> {
     const textBytes = stringToUint8(inText);
@@ -51,7 +56,17 @@ async function messageEncrypt(inText: string, channel_id: string): Promise<strin
     return `START|${uint8ToBase64(messageBytes)}|END`;
 }
 
-async function tryMessageHandle(bytes: Uint8Array<ArrayBuffer>, channel_id: string): Promise<undefined | string> {
+function messageKeyExchange(publicKey: PublicKey): string {
+    //Should be around 33 bytes
+    const publicKeyBytes = Uint8Array.fromHex(publicKey.toCompressed());
+    const header = new Uint8Array([MessageType.PubKeyShare]);
+    const messageBytes = concatArrayBuffers(header, publicKeyBytes);
+
+    return `START|${uint8ToBase64(messageBytes)}|END`;
+
+}
+
+async function tryMessageHandle(bytes: Uint8Array<ArrayBuffer>, channel_id: string, message: Message): Promise<undefined | string> {
     const payloadLen = bytes.byteLength - HEAD_LEN;
     if (payloadLen < 0) {
         // This can't be a valid payload since the sizes are wrong
@@ -67,11 +82,55 @@ async function tryMessageHandle(bytes: Uint8Array<ArrayBuffer>, channel_id: stri
     switch (message_type[0]) {
         case MessageType.Encrypted:
             return tryMessageDecrypt(bytes.slice(read), channel_id);
+        case MessageType.PubKeyShare:
+            if (message.author.id == UserStore.getCurrentUser().id) {
+                // We dont have to import our own keys
+                break;
+            }
+            const publicKey = bytes.slice(read).toHex();
+            if (settings.store.knownPublicKeys[channel_id]) {
+                if (settings.store.knownPublicKeys[channel_id] == publicKey) {
+                    break;
+                }
+                Alerts.show({
+                    title: "Wait a minute",
+                    body: <>
+                        <Paragraph>
+                            You just received a public key for a channel which already has a different public key.
+                        </Paragraph>
+                    </>,
+                    confirmText: "Use the new one!",
+                    cancelText: "Stick to the old one",
+                    onCancel: () => Alerts.close(),
+                    onConfirm: () => { { settings.store.knownPublicKeys[channel_id] = publicKey; startKeyExchange(channel_id); } }
+                });
+                break;
+            }
+            Alerts.show({
+                title: "LETSHOSLKJDFHNSJIHGN",
+                body: <>
+                    <Paragraph>
+                        You just received a public key. Import it
+                    </Paragraph>
+                </>,
+                confirmText: "YESSSS!!!111!",
+                cancelText: "Actually, I hate encryption",
+                onCancel: () => Alerts.close(),
+                onConfirm: () => { { settings.store.knownPublicKeys[channel_id] = publicKey; startKeyExchange(channel_id); } }
+            });
+            break;
         default:
             LOGGER.warn(`Unhandled message type: ${message_type[0]}. Maybe this is due to an outdated version`);
 
     }
 
+}
+
+export async function startKeyExchange(channelId: string) {
+    const privateKey = await getPrivateEcdhChannelKey(channelId);
+    const publicKey = privateKey.toPub();
+    const message = messageKeyExchange(publicKey);
+    sendMessage(channelId, { content: message });
 }
 
 async function tryMessageDecrypt(bytes: Uint8Array<ArrayBuffer>, channel_id: string): Promise<undefined | string> {
@@ -132,7 +191,7 @@ function handleIncomingMessage(message: Message) {
         const bytes = base64ToUint8(base64);
         if (!bytes) break;
 
-        tryMessageHandle(bytes, message.channel_id).then(function (decrypted: string | undefined) {
+        tryMessageHandle(bytes, message.channel_id, message).then(function (decrypted: string | undefined) {
             if (!decrypted) {
                 // This message probably wasn't encrypted to begin with
                 return;
@@ -172,13 +231,21 @@ export default definePlugin({
     start() {
         this.onSent = addMessagePreSendListener(async (channelId, messageObj, extra) => {
             if (!settings.store.enableEncryption) return;
-            messageObj.content = await messageEncrypt(messageObj.content, channelId);
+            try {
+                messageObj.content = await messageEncrypt(messageObj.content, channelId);
+            } catch {
+                return { cancel: true };
+            }
             return { cancel: false };
         });
 
         this.onEdit = addMessagePreEditListener(async (channelId, messageId, messageObj) => {
             if (!settings.store.enableEncryption) return;
-            messageObj.content = await messageEncrypt(messageObj.content, channelId);
+            try {
+                messageObj.content = await messageEncrypt(messageObj.content, channelId);
+            } catch {
+                return { cancel: true };
+            }
             return { cancel: false };
         });
     },

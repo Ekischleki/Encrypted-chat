@@ -11,11 +11,11 @@ import { Margins } from "@components/margins";
 import { Paragraph } from "@components/Paragraph";
 import { getCurrentChannel } from "@utils/discord";
 import { ModalCloseButton, ModalContent, ModalHeader, ModalProps, ModalRoot, openModal } from "@utils/modal";
-import { TextInput } from "@webpack/common";
+import { SelectedChannelStore, TextInput } from "@webpack/common";
 
 import { EncryptMessagesToggle } from "./encryptIcon";
-import { SetChannelKey } from "./setChannelKey";
 import { cl, getCurrentChannelOrDmName } from "./utils";
+import { startKeyExchange } from ".";
 
 
 // this is the modal that opens when you initially click on the chatbar icon.
@@ -47,26 +47,33 @@ export function EncryptIconModal({ rootProps }: { rootProps: ModalProps; }) {
     );
 }
 
-// This is the modal that opens when you set the key for a channel
-export function KeySetModal({ rootProps }: { rootProps: ModalProps; }) {
+// This is the modal that indicated a key exchange message will be sent
+export function KeyExchangeModal({ rootProps }: { rootProps: ModalProps; }) {
     return (
         <ModalRoot {...rootProps}>
             <ModalHeader className={cl("modal-header")}>
                 <Heading tag="h1" className={cl("modal-title")}>
-                    Encrypted Chat
+                    Slow down-
                 </Heading>
                 <ModalCloseButton onClick={rootProps.onClose} />
             </ModalHeader>
 
             <ModalContent className={cl("modal-content")}>
-                Enter de-encryption key for channel {getCurrentChannelOrDmName()}
                 <Divider className={Margins.bottom16} />
-                <SetChannelKey rootProps={rootProps} />
+                <Paragraph className={Margins.bottom16}>
+                    You don't yet have {getCurrentChannelOrDmName()}'s public key, which you need to send or receive encrypted messages. Click this handy button below to start a key exchange.
+                </Paragraph>
+                <Button className={[cl("modal-button"), Margins.bottom16].join(" ")} onClick={() => startKeyExchange(SelectedChannelStore.getChannelId()!)}>
+                    Start Key Exchange
+                </Button>
+
             </ModalContent>
 
         </ModalRoot>
     );
 }
+
+
 
 // this is the modal that opens when you set the master password
 export function MasterPasswordModal({ rootProps, on_confirm }: { rootProps: ModalProps; on_confirm: ((password: string, rootProps: ModalProps) => void); }) {

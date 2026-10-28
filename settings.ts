@@ -13,11 +13,18 @@ export const settings = definePluginSettings({
         description: "Enable encryption of your messages.",
         default: true
     },
-    storedKeys: {
+    masterPassChecksum: {
+        type: OptionType.STRING,
+        hidden: true,
+        description: "Stores the checksum of your master password.",
+        default: undefined
+    },
+    knownPublicKeys: {
         type: OptionType.CUSTOM,
         hidden: true,
         default: {}
     },
+
     showToggleAlerts: {
         type: OptionType.BOOLEAN,
         description: "Show an alert when you shift-click on the chat icon to quickly enable/disable message encryption",
